@@ -1,0 +1,23 @@
+extends:
+  - "spectral:oas"
+
+rules:
+  info-contact: off
+  info-description: warn
+  operation-description: warn
+  operation-operationId: error
+  operation-tags: error
+  operation-tag-defined: error
+  tag-description: off
+  no-$ref-siblings: off
+  oas3-api-servers: error
+  oas3-valid-media-example: error
+  oas3-valid-schema-example: error
+  oas3-unused-component: off
+  path-params: error
+  path-keys-no-trailing-slash: error
+  duplicated-entry-in-enum: error
+  no-eval-in-markdown: error
+  no-script-tags-in-markdown: error
+  contact-properties: off
+  license-url: off

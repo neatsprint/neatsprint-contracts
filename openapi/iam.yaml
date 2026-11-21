@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: NeatSprint IAM API
+  version: 0.1.0
+  description: |
+    Identity, session, user, role and invitation endpoints.
+    M0 placeholder: only the platform ping is implemented. The full contract lands in M1.
+  contact:
+    name: NeatSprint
+    url: https://github.com/neatsprint
+  license:
+    name: AGPL-3.0-or-later
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local gateway
+
+tags:
+  - name: platform
+    description: Liveness and service metadata.
+  - name: auth
+    description: Authentication and session lifecycle.
+
+paths:
+  /iam/ping:
+    get:
+      operationId: pingIam
+      summary: Service liveness echo
+      description: Returns a fixed pong payload; used by smoke tests.
+      tags: [platform]
+      responses:
+        "200":
+          description: The service is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ping, service]
+                properties:
+                  ping:
+                    type: string
+                    const: pong
+                  service:
+                    type: string
+                    const: iam
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Exchange credentials for tokens
+      tags: [auth]
+      description: |
+        Planned for M1. Email is globally unique across tenants (ADR-012), so no workspace
+        selector is required.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 10
+                device:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    platform:
+                      type: string
+                      enum: [windows, macos, linux, ios, android, web]
+                    app_version:
+                      type: string
+      responses:
+        "200":
+          description: Authenticated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required: [access_token, token_type, expires_in, refresh_token, user]
+                    properties:
+                      access_token:
+                        type: string
+                      token_type:
+                        type: string
+                        const: Bearer
+                      expires_in:
+                        type: integer
+                        examples: [900]
+                      refresh_token:
+                        type: string
+                      user:
+                        $ref: "#/components/schemas/SessionUser"
+                  meta:
+                    type: object
+                    required: [request_id]
+                    properties:
+                      request_id:
+                        type: string
+        "401":
+          $ref: "../openapi/common.yaml#/components/responses/Unauthorized"
+        "429":
+          $ref: "../openapi/common.yaml#/components/responses/RateLimited"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    SessionUser:
+      type: object
+      required: [id, email, full_name, tenant_id, roles, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        tenant_id:
+          type: string
+          format: uuid
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+
+security:
+  - bearerAuth: []

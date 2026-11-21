@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: NeatSprint Core Platform API
+  version: 0.1.0
+  description: |
+    Tenant, plan, application registry and tenant-settings endpoints.
+    M0 placeholder: only the platform ping is implemented. The full contract lands in M1.
+  contact:
+    name: NeatSprint
+    url: https://github.com/neatsprint
+  license:
+    name: AGPL-3.0-or-later
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local gateway
+
+tags:
+  - name: platform
+    description: Liveness and service metadata.
+  - name: tenancy
+    description: Tenant lifecycle, plans and module enablement.
+
+paths:
+  /core/ping:
+    get:
+      operationId: pingCore
+      summary: Service liveness echo
+      description: Returns a fixed pong payload; used by smoke tests.
+      tags: [platform]
+      responses:
+        "200":
+          description: The service is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ping, service]
+                properties:
+                  ping:
+                    type: string
+                    const: pong
+                  service:
+                    type: string
+                    const: core
+
+  /core/tenants/current:
+    get:
+      operationId: getCurrentTenant
+      summary: Read the caller's tenant
+      tags: [tenancy]
+      description: Planned for M1.
+      responses:
+        "200":
+          description: Tenant detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Tenant"
+                  meta:
+                    type: object
+                    properties:
+                      request_id:
+                        type: string
+        "401":
+          $ref: "../openapi/common.yaml#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Tenant:
+      type: object
+      required: [id, name, slug, plan_code, status, settings]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+        plan_code:
+          type: string
+          enum: [FREE, TEAM, BUSINESS, ENTERPRISE]
+        status:
+          type: string
+          enum: [TRIAL, ACTIVE, SUSPENDED, CLOSED]
+        settings:
+          $ref: "#/components/schemas/TenantSettings"
+
+    TenantSettings:
+      type: object
+      properties:
+        timezone:
+          type: string
+          examples: [Asia/Colombo]
+        week_start:
+          type: string
+          enum: [monday, sunday]
+        screenshot_interval_min:
+          type: integer
+          minimum: 1
+        screenshot_interval_max:
+          type: integer
+          minimum: 1
+        privacy_window_hours:
+          type: integer
+          minimum: 1
+          maximum: 72
+          default: 24
+        retention_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 30
+        aggregation_threshold:
+          type: integer
+          minimum: 0
+
+security:
+  - bearerAuth: []

@@ -1,0 +1,223 @@
+asyncapi: 2.6.0
+info:
+  title: NeatSprint Domain Events
+  version: 0.1.0
+  description: |
+    Events published through the transactional outbox and Redis Streams (ADR-009).
+    Every event is immutable, past tense, tenant-scoped and versioned.
+  contact:
+    name: NeatSprint
+    url: https://github.com/neatsprint
+  license:
+    name: AGPL-3.0-or-later
+
+defaultContentType: application/json
+
+channels:
+  item.created:
+    description: A backlog item was created.
+    subscribe:
+      operationId: onItemCreated
+      message:
+        $ref: "#/components/messages/ItemCreated"
+
+  item.transitioned:
+    description: A backlog item changed status.
+    subscribe:
+      operationId: onItemTransitioned
+      message:
+        $ref: "#/components/messages/ItemTransitioned"
+
+  sprint.completed:
+    description: A sprint was completed and snapshotted.
+    subscribe:
+      operationId: onSprintCompleted
+      message:
+        $ref: "#/components/messages/SprintCompleted"
+
+  time_entry.recorded:
+    description: A time entry was recorded (timer or manual).
+    subscribe:
+      operationId: onTimeEntryRecorded
+      message:
+        $ref: "#/components/messages/TimeEntryRecorded"
+
+  screenshot.deleted:
+    description: |
+      A screenshot was permanently deleted by its owner or by retention. Consumers MUST
+      purge derived data (AI embeddings, caches). No image content is included.
+    subscribe:
+      operationId: onScreenshotDeleted
+      message:
+        $ref: "#/components/messages/ScreenshotDeleted"
+
+components:
+  messages:
+    ItemCreated:
+      name: ItemCreated
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/EventEnvelope"
+          - type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [item_id, project_id, key, type, status]
+                properties:
+                  item_id:
+                    type: string
+                    format: uuid
+                  project_id:
+                    type: string
+                    format: uuid
+                  key:
+                    type: string
+                    examples: [AUTH-142]
+                  type:
+                    type: string
+                    enum: [TASK, STORY, BUG, SUGGESTION]
+                  status:
+                    type: string
+                    enum: [TODO, IN_PROGRESS, IN_REVIEW, DONE, BLOCKED]
+                  assignee_id:
+                    type: [string, "null"]
+                    format: uuid
+
+    ItemTransitioned:
+      name: ItemTransitioned
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/EventEnvelope"
+          - type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [item_id, from_status, to_status]
+                properties:
+                  item_id:
+                    type: string
+                    format: uuid
+                  from_status:
+                    type: string
+                  to_status:
+                    type: string
+                  actor_id:
+                    type: string
+                    format: uuid
+
+    SprintCompleted:
+      name: SprintCompleted
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/EventEnvelope"
+          - type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [sprint_id, project_id, committed_points, completed_points]
+                properties:
+                  sprint_id:
+                    type: string
+                    format: uuid
+                  project_id:
+                    type: string
+                    format: uuid
+                  committed_points:
+                    type: number
+                  completed_points:
+                    type: number
+                  carried_over:
+                    type: integer
+
+    TimeEntryRecorded:
+      name: TimeEntryRecorded
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/EventEnvelope"
+          - type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [entry_id, user_id, item_id, duration_seconds, source]
+                properties:
+                  entry_id:
+                    type: string
+                    format: uuid
+                  user_id:
+                    type: string
+                    format: uuid
+                  item_id:
+                    type: string
+                    format: uuid
+                  project_id:
+                    type: string
+                    format: uuid
+                  duration_seconds:
+                    type: integer
+                    minimum: 1
+                  source:
+                    type: string
+                    enum: [TIMER, MANUAL, IMPORT]
+
+    ScreenshotDeleted:
+      name: ScreenshotDeleted
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/EventEnvelope"
+          - type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [screenshot_id, user_id, deleted_at, reason]
+                properties:
+                  screenshot_id:
+                    type: string
+                    format: uuid
+                  user_id:
+                    type: string
+                    format: uuid
+                  deleted_at:
+                    type: string
+                    format: date-time
+                  reason:
+                    type: string
+                    enum: [USER, RETENTION, GDPR_ERASURE]
+                  blob_deleted:
+                    type: boolean
+                  embeddings_deleted:
+                    type: boolean
+
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [event_id, event_type, event_version, occurred_at, tenant_id, aggregate_id]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: UUIDv7 generated with the outbox row.
+        event_type:
+          type: string
+          examples: [item.created]
+        event_version:
+          type: integer
+          minimum: 1
+        occurred_at:
+          type: string
+          format: date-time
+        tenant_id:
+          type: string
+          format: uuid
+        actor_id:
+          type: [string, "null"]
+          format: uuid
+        aggregate_id:
+          type: string
+          format: uuid
+        trace_id:
+          type: [string, "null"]

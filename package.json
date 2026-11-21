@@ -1,0 +1,15 @@
+{
+  "name": "@neatsprint/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NeatSprint OpenAPI and AsyncAPI contracts",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "lint": "spectral lint \"openapi/*.yaml\" --fail-severity=warn",
+    "lint:all": "spectral lint \"openapi/*.yaml\" \"asyncapi/*.yaml\" --fail-severity=warn",
+    "bundle": "redocly bundle openapi/iam.yaml --output dist/iam.yaml"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "^6.13.1"
+  }
+}
